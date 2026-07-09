@@ -1,0 +1,244 @@
+---
+// src/components/ExpenseForm.astro
+import { Icon } from 'astro-icon/components';
+import { CategoryService } from '@/services/category.service';
+import { fromCents } from '@/utils/currency';
+
+interface Props {
+  userId: number;
+  mode: 'create' | 'edit';
+  expense?: {
+    id: number;
+    title: string;
+    amount: number;
+    categoryId: number | null;
+    expenseDate: string;
+    notes: string | null;
+  } | null;
+}
+
+const { userId, mode, expense } = Astro.props;
+const categories = await CategoryService.listForUser(userId);
+const isEdit = mode === 'edit' && expense;
+const today = new Date().toISOString().slice(0, 10);
+---
+
+<form id="expense-form" class="card-float p-6 md:p-8 space-y-5" data-animate="rise">
+  <div>
+    <label class="block text-sm font-medium mb-1.5" for="title">Título</label>
+    <input
+      type="text" id="title" name="title" required maxlength="200"
+      value={expense?.title ?? ''}
+      placeholder="Ej: Supermercado"
+      class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+    />
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm font-medium mb-1.5" for="amount">Monto</label>
+      <div class="relative">
+        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-ink-soft">$</span>
+        <input
+          type="number" id="amount" name="amount" required min="1" step="1"
+          value={expense ? fromCents(expense.amount) : ''}
+          placeholder="0"
+          class="money w-full rounded-2xl bg-bg pl-8 pr-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+        />
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1.5" for="expenseDate">Fecha</label>
+      <input
+        type="date" id="expenseDate" name="expenseDate" required
+        value={expense?.expenseDate ?? today}
+        class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+      />
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium mb-2">Categoría</label>
+    <div class="flex flex-wrap gap-2">
+      {categories.map((cat) => (
+        <label class="category-radio">
+          <input
+            type="radio" name="categoryId" value={cat.id}
+            checked={expense ? expense.categoryId === cat.id : false}
+            class="sr-only peer"
+          />
+          <span
+            class="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium cursor-pointer transition"
+            style={`--cat-color:${cat.color}`}
+          >
+            <Icon name={`lucide:${cat.icon}`} class="w-3.5 h-3.5" />
+            {cat.name}
+          </span>
+        </label>
+      ))}
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium mb-1.5" for="notes">Notas (opcional)</label>
+    <textarea
+      id="notes" name="notes" maxlength="1000" rows="2"
+      placeholder="Detalles adicionales..."
+      class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition resize-none"
+    >{expense?.notes ?? ''}</textarea>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <button type="submit" id="submit-btn" class="btn-primary flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-2">
+      <Icon name="lucide:check" id="submit-icon" class="w-4 h-4" />
+      <span id="submit-spinner" class="hidden w-4 h-4 rounded-full border-2 border-white/40 border-t-white spin"></span>
+      <span id="btn-text">{isEdit ? 'Guardar cambios' : 'Agregar gasto'}</span>
+    </button>
+    {isEdit && (
+      <button type="button" id="delete-trigger" class="px-5 py-3 rounded-full text-sm font-semibold text-danger bg-danger/10 hover:bg-danger/15 transition flex items-center gap-2">
+        <Icon name="lucide:trash-2" class="w-4 h-4" />
+      </button>
+    )}
+  </div>
+</form>
+
+{isEdit && (
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div id="modal-backdrop" class="absolute inset-0 bg-ink/40"></div>
+    <div class="card-float relative w-full max-w-xs p-6 text-center" data-animate="rise">
+      <div class="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4">
+        <Icon name="lucide:trash-2" class="w-5 h-5 text-danger" />
+      </div>
+      <h2 class="text-base font-bold mb-1">¿Eliminar este gasto?</h2>
+      <p class="text-sm text-ink-soft mb-6">Esta acción no se puede deshacer.</p>
+      <div class="flex gap-3">
+        <button id="modal-cancel" class="flex-1 py-2.5 rounded-full text-sm font-semibold bg-bg hover:bg-bg/70 transition">
+          Cancelar
+        </button>
+        <button id="modal-confirm" class="flex-1 py-2.5 rounded-full text-sm font-semibold bg-danger text-white hover:opacity-90 transition flex items-center justify-center gap-2">
+          <span id="modal-spinner" class="hidden w-4 h-4 rounded-full border-2 border-white/40 border-t-white spin"></span>
+          <span id="modal-confirm-text">Eliminar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+<style>
+  /* Ambos estados (checked/unchecked) definidos en el mismo bloque
+     para evitar conflictos de orden de cascada con clases de Tailwind */
+  .category-radio span {
+    background: color-mix(in srgb, var(--cat-color) 12%, white);
+    color: var(--cat-color);
+  }
+  .category-radio input:checked + span {
+    background: var(--cat-color);
+    color: #fff;
+  }
+
+  [data-animate="rise"] {
+    animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 0.7s linear infinite; }
+
+  #confirm-modal.flex { display: flex; }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-animate="rise"] { animation: none; }
+    .spin { animation: none; }
+  }
+</style>
+
+<script define:vars={{ isEdit, expenseId: expense?.id }}>
+  const form = document.getElementById('expense-form');
+  const btn = document.getElementById('submit-btn');
+  const btnText = document.getElementById('btn-text');
+  const submitIcon = document.getElementById('submit-icon');
+  const submitSpinner = document.getElementById('submit-spinner');
+
+  function setSubmitLoading(isLoading, label) {
+    btn.disabled = isLoading;
+    btnText.textContent = label;
+    submitIcon?.classList.toggle('hidden', isLoading);
+    submitSpinner?.classList.toggle('hidden', !isLoading);
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setSubmitLoading(true, isEdit ? 'Guardando cambios...' : 'Agregando gasto...');
+
+    const formData = new FormData(form);
+    const payload = {
+      title: formData.get('title'),
+      amount: Number(formData.get('amount')),
+      expenseDate: formData.get('expenseDate'),
+      categoryId: formData.get('categoryId') ? Number(formData.get('categoryId')) : null,
+      notes: formData.get('notes') || null,
+    };
+
+    const endpoint = isEdit ? `/api/expenses/${expenseId}` : '/api/expenses';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    const res = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      window.location.href = '/expenses';
+    } else {
+      const data = await res.json();
+      setSubmitLoading(false, isEdit ? 'Guardar cambios' : 'Agregar gasto');
+      alert(typeof data.error === 'string' ? data.error : 'Revisá los datos ingresados');
+    }
+  });
+
+  const deleteTrigger = document.getElementById('delete-trigger');
+  const modal = document.getElementById('confirm-modal');
+  const modalBackdrop = document.getElementById('modal-backdrop');
+  const modalCancel = document.getElementById('modal-cancel');
+  const modalConfirm = document.getElementById('modal-confirm');
+  const modalConfirmText = document.getElementById('modal-confirm-text');
+  const modalSpinner = document.getElementById('modal-spinner');
+
+  function openModal() {
+    modal?.classList.remove('hidden');
+    modal?.classList.add('flex');
+  }
+  function closeModal() {
+    modal?.classList.add('hidden');
+    modal?.classList.remove('flex');
+  }
+
+  deleteTrigger?.addEventListener('click', openModal);
+  modalCancel?.addEventListener('click', closeModal);
+  modalBackdrop?.addEventListener('click', closeModal);
+
+  modalConfirm?.addEventListener('click', async () => {
+    modalConfirm.disabled = true;
+    modalCancel.disabled = true;
+    modalConfirmText.textContent = 'Eliminando...';
+    modalSpinner?.classList.remove('hidden');
+
+    const res = await fetch(`/api/expenses/${expenseId}`, { method: 'DELETE' });
+
+    if (res.ok) {
+      window.location.href = '/expenses';
+    } else {
+      modalConfirm.disabled = false;
+      modalCancel.disabled = false;
+      modalConfirmText.textContent = 'Eliminar';
+      modalSpinner?.classList.add('hidden');
+      closeModal();
+      alert('No se pudo eliminar el gasto');
+    }
+  });
+</script>

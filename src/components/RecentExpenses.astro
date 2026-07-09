@@ -1,0 +1,55 @@
+---
+// src/components/RecentExpenses.astro
+import { Icon } from 'astro-icon/components';
+import { fromCents } from '@/utils/currency';
+
+interface ExpenseItem {
+  id: number;
+  title: string;
+  amount: number;
+  expenseDate: string;
+  category: { name: string; color: string; icon: string } | null;
+}
+
+interface Props {
+  expenses: ExpenseItem[];
+}
+const { expenses } = Astro.props;
+
+const formatter = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 });
+const dateFormatter = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short' });
+---
+
+<div class="card-float p-8" data-animate="rise" style="animation-delay: 0.2s">
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm font-semibold">Movimientos recientes</p>
+    <a href="/expenses" class="text-xs text-primary font-semibold">Ver todos</a>
+  </div>
+
+  {expenses.length === 0 ? (
+    <div class="text-center py-8">
+      <p class="text-sm text-ink-soft">Todavía no registraste gastos este mes</p>
+      <a href="/expenses/new" class="inline-block mt-3 text-sm text-primary font-semibold">+ Agregar el primero</a>
+    </div>
+  ) : (
+    <div class="space-y-1">
+      {expenses.slice(0, 6).map((exp) => (
+        <a href={`/expenses/${exp.id}`} class="flex items-center justify-between px-3 py-3 rounded-2xl hover:bg-bg transition">
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={`background:${exp.category?.color ?? '#6b7280'}22`}
+            >
+              <Icon name={`lucide:${exp.category?.icon ?? 'tag'}`} class="w-4 h-4" style={`color:${exp.category?.color ?? '#6b7280'}`} />
+            </div>
+            <div>
+              <p class="text-sm font-medium">{exp.title}</p>
+              <p class="text-xs text-ink-soft">{dateFormatter.format(new Date(exp.expenseDate))}</p>
+            </div>
+          </div>
+          <span class="money text-sm font-semibold text-danger">-{formatter.format(fromCents(exp.amount))}</span>
+        </a>
+      ))}
+    </div>
+  )}
+</div>

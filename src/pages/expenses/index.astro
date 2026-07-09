@@ -1,0 +1,97 @@
+---
+// src/pages/expenses/index.astro
+import Layout from '@/layouts/Layout.astro';
+import TopBar from '@/components/TopBar.astro';
+import BottomNav from '@/components/BottomNav.astro';
+import { Icon } from 'astro-icon/components';
+import { ExpenseService } from '@/services/expense.service';
+import { fromCents } from '@/utils/currency';
+
+const user = Astro.locals.user!;
+const allExpenses = await ExpenseService.list(Number(user.id));
+
+const formatter = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 });
+const dateFormatter = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+
+// Agrupar por mes para una lectura más clara, tipo planilla
+const groups = allExpenses.reduce<Record<string, typeof allExpenses>>((acc, exp) => {
+  const key = exp.expenseDate.slice(0, 7); // YYYY-MM
+  if (!acc[key]) acc[key] = [];
+  acc[key].push(exp);
+  return acc;
+}, {});
+
+const monthFormatter = new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric' });
+---
+
+<Layout title="Gastos">
+  <TopBar userName={user.name} />
+
+  <main class="max-w-3xl mx-auto px-4 md:px-8 pb-28 md:pb-12">
+    <div class="flex items-center justify-between mt-4 md:mt-2 mb-6">
+      <h1 class="text-2xl font-bold tracking-tight">Todos tus gastos</h1>
+      <a href="/expenses/new" class="hidden md:flex btn-primary px-4 py-2.5 text-sm font-semibold items-center gap-2">
+        <Icon name="lucide:plus" class="w-4 h-4" /> Nuevo
+      </a>
+    </div>
+
+    {allExpenses.length === 0 ? (
+      <div class="card-float p-12 text-center" data-animate="rise">
+        <Icon name="lucide:receipt" class="w-10 h-10 text-ink-soft mx-auto mb-3" />
+        <p class="text-sm text-ink-soft mb-4">Todavía no registraste ningún gasto</p>
+        <a href="/expenses/new" class="btn-primary inline-flex px-5 py-2.5 text-sm font-semibold items-center gap-2">
+          <Icon name="lucide:plus" class="w-4 h-4" /> Agregar el primero
+        </a>
+      </div>
+    ) : (
+      Object.entries(groups).map(([monthKey, items]) => {
+        const monthTotal = items.reduce((sum, e) => sum + e.amount, 0);
+        return (
+          <div class="mb-6">
+            <div class="flex items-center justify-between px-2 mb-3">
+              <p class="text-sm font-semibold capitalize text-ink-soft">
+                {monthFormatter.format(new Date(monthKey + '-02'))}
+              </p>
+              <p class="money text-sm font-semibold text-ink-soft">{formatter.format(fromCents(monthTotal))}</p>
+            </div>
+
+            <div class="card-float divide-y divide-bg" data-animate="rise">
+              {items.map((exp) => (
+                <a href={`/expenses/${exp.id}`} class="flex items-center justify-between px-5 py-4 hover:bg-bg/50 transition first:rounded-t-[1.25rem] last:rounded-b-[1.25rem]">
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                      style={`background:${exp.category?.color ?? '#6b7280'}22`}
+                    >
+                      <Icon name={`lucide:${exp.category?.icon ?? 'tag'}`} class="w-4 h-4" style={`color:${exp.category?.color ?? '#6b7280'}`} />
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium">{exp.title}</p>
+                      <p class="text-xs text-ink-soft">{dateFormatter.format(new Date(exp.expenseDate))}</p>
+                    </div>
+                  </div>
+                  <span class="money text-sm font-semibold text-danger">-{formatter.format(fromCents(exp.amount))}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        );
+      })
+    )}
+  </main>
+
+  <BottomNav />
+</Layout>
+
+<style>
+  [data-animate="rise"] {
+    animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-animate="rise"] { animation: none; }
+  }
+</style>

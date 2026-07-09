@@ -1,0 +1,93 @@
+---
+// src/components/CategoryChart.astro
+import { fromCents } from '@/utils/currency';
+
+interface CategoryTotal {
+  categoryId: number | null;
+  categoryName: string | null;
+  categoryColor: string | null;
+  total: number;
+}
+
+interface Props {
+  data: CategoryTotal[];
+}
+const { data } = Astro.props;
+
+const filtered = data.filter((d) => d.total > 0).sort((a, b) => b.total - a.total);
+const grandTotal = filtered.reduce((sum, d) => sum + d.total, 0);
+
+const RADIUS = 70;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+let offset = 0;
+const segments = filtered.map((d) => {
+  const fraction = grandTotal > 0 ? d.total / grandTotal : 0;
+  const length = fraction * CIRCUMFERENCE;
+  const segment = {
+    ...d,
+    dashArray: `${length} ${CIRCUMFERENCE - length}`,
+    dashOffset: -offset,
+  };
+  offset += length;
+  return segment;
+});
+---
+
+<div class="card-float p-8" data-animate="rise" style="animation-delay: 0.1s">
+  <p class="text-sm font-semibold mb-6">Por categoría</p>
+
+  {filtered.length === 0 ? (
+    <div class="flex flex-col items-center justify-center py-8 text-center">
+      <p class="text-sm text-ink-soft">Todavía no hay gastos este mes</p>
+    </div>
+  ) : (
+    <div class="flex flex-col items-center">
+      <svg viewBox="0 0 180 180" class="w-44 h-44 -rotate-90" id="donut-chart">
+        <circle cx="90" cy="90" r={RADIUS} fill="none" stroke="var(--color-bg)" stroke-width="20" />
+        {segments.map((s) => (
+          <circle
+            cx="90" cy="90" r={RADIUS} fill="none"
+            stroke={s.categoryColor ?? '#6b7280'}
+            stroke-width="20"
+            stroke-dasharray={s.dashArray}
+            stroke-dashoffset={s.dashOffset}
+            stroke-linecap="round"
+            class="chart-segment"
+          />
+        ))}
+      </svg>
+
+      <div class="w-full mt-6 space-y-2">
+        {filtered.map((d) => (
+          <div class="flex items-center justify-between text-sm">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full" style={`background:${d.categoryColor ?? '#6b7280'}`}></span>
+              <span class="text-ink-soft">{d.categoryName ?? 'Sin categoría'}</span>
+            </div>
+            <span class="money font-semibold">
+              {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(fromCents(d.total))}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+</div>
+
+<style>
+  .chart-segment {
+    stroke-dashoffset: 0 !important;
+    animation: draw-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+    transform-origin: center;
+  }
+
+  @keyframes draw-in {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chart-segment { animation: none; }
+  }
+</style>

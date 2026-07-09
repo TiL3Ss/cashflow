@@ -1,0 +1,32 @@
+---
+// src/layouts/Layout.astro
+import '@fontsource-variable/inter';
+import '@/styles/global.css';
+
+interface Props {
+  title?: string;
+  showMesh?: boolean;
+}
+
+const { title, showMesh = true } = Astro.props;
+const appName = import.meta.env.PUBLIC_APP_NAME;
+const pageTitle = title ? `${title} · ${appName}` : appName;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{pageTitle}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="min-h-screen antialiased">
+    {showMesh && (
+      <div class="mesh-bg">
+        <div class="mesh-bg-accent"></div>
+      </div>
+    )}
+    <slot />
+  </body>
+</html>

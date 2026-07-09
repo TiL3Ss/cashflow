@@ -1,0 +1,39 @@
+---
+// src/pages/expenses/[id].astro
+import Layout from '@/layouts/Layout.astro';
+import TopBar from '@/components/TopBar.astro';
+import BottomNav from '@/components/BottomNav.astro';
+import ExpenseForm from '@/components/ExpenseForm.astro';
+import { Icon } from 'astro-icon/components';
+import { ExpenseService } from '@/services/expense.service';
+
+const user = Astro.locals.user!;
+const expenseId = Number(Astro.params.id);
+
+if (isNaN(expenseId)) {
+  return Astro.redirect('/expenses');
+}
+
+const expense = await ExpenseService.getById(Number(user.id), expenseId);
+
+if (!expense) {
+  return Astro.redirect('/expenses');
+}
+---
+
+<Layout title="Editar gasto">
+  <TopBar userName={user.name} />
+
+  <main class="max-w-lg mx-auto px-4 md:px-8 pb-28 md:pb-12">
+    <div class="flex items-center gap-2 mt-4 md:mt-2 mb-5">
+      <a href="/expenses" class="inline-flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-ink-soft hover:text-ink hover:bg-bg transition">
+        <Icon name="lucide:arrow-left" class="w-5 h-5" />
+      </a>
+      <h1 class="text-xl font-bold">Editar gasto</h1>
+    </div>
+
+    <ExpenseForm userId={Number(user.id)} mode="edit" expense={expense} />
+  </main>
+
+  <BottomNav />
+</Layout>

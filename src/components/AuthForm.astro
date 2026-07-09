@@ -1,0 +1,135 @@
+---
+// src/components/AuthForm.astro
+import { Icon } from 'astro-icon/components';
+
+interface Props {
+  mode: 'login' | 'register';
+  error?: string;
+}
+
+const { mode, error } = Astro.props;
+const isRegister = mode === 'register';
+---
+
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div
+    class="card-float w-full max-w-sm p-8 md:p-10"
+    data-animate="rise"
+  >
+    <div class="flex items-center gap-2 mb-8 justify-center">
+      <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
+        <Icon name="lucide:wallet" class="w-5 h-5 text-white" />
+      </div>
+      <span class="font-extrabold text-lg tracking-tight">CashFlow</span>
+    </div>
+
+    <h1 class="text-2xl font-extrabold text-center mb-1 tracking-tight">
+      {isRegister ? 'Crear cuenta' : 'Bienvenido de nuevo'}
+    </h1>
+    <p class="text-sm text-ink-soft text-center mb-7">
+      {isRegister ? 'Empezá a organizar tus gastos' : 'Iniciá sesión para continuar'}
+    </p>
+
+    {error && (
+      <div class="mb-4 rounded-2xl bg-danger/10 text-danger text-sm px-4 py-3 flex items-center gap-2">
+        <Icon name="lucide:alert-circle" class="w-4 h-4 shrink-0" />
+        {error}
+      </div>
+    )}
+
+    <form id="auth-form" class="space-y-4">
+      {isRegister && (
+        <div class="relative">
+          <Icon name="lucide:user" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft" />
+          <input
+            type="text" id="name" name="name" required
+            placeholder="Tu nombre"
+            class="w-full rounded-2xl bg-bg pl-11 pr-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+          />
+        </div>
+      )}
+
+      <div class="relative">
+        <Icon name="lucide:mail" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft" />
+        <input
+          type="email" id="email" name="email" required
+          placeholder="Email"
+          class="w-full rounded-2xl bg-bg pl-11 pr-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+        />
+      </div>
+
+      <div class="relative">
+        <Icon name="lucide:lock" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft" />
+        <input
+          type="password" id="password" name="password" required minlength="8"
+          placeholder="Contraseña"
+          class="w-full rounded-2xl bg-bg pl-11 pr-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+        />
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-primary w-full py-3 text-sm font-semibold flex items-center justify-center gap-2">
+        <span id="btn-text">{isRegister ? 'Registrarme' : 'Entrar'}</span>
+        <Icon name="lucide:arrow-right" class="w-4 h-4" />
+      </button>
+    </form>
+
+    <p class="text-sm text-center text-ink-soft mt-7">
+      {isRegister ? (
+        <>¿Ya tenés cuenta? <a href="/login" class="text-primary font-semibold">Iniciar sesión</a></>
+      ) : (
+        <>¿No tenés cuenta? <a href="/register" class="text-primary font-semibold">Registrate</a></>
+      )}
+    </p>
+  </div>
+</div>
+
+<style>
+  [data-animate="rise"] {
+    animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-animate="rise"] { animation: none; }
+  }
+</style>
+
+<script define:vars={{ isRegister }}>
+  const form = document.getElementById('auth-form');
+  const btn = document.getElementById('submit-btn');
+  const btnText = document.getElementById('btn-text');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    btnText.textContent = 'Un momento...';
+
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+    const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      window.location.href = isRegister ? '/login' : '/dashboard';
+    } else {
+      const data = await res.json();
+      const message = typeof data.error === 'string' ? data.error : 'Revisá los datos ingresados';
+      btn.disabled = false;
+      btnText.textContent = isRegister ? 'Registrarme' : 'Entrar';
+      // Reemplazamos el alert por un mensaje inline recargando con query param simple por ahora
+      const errorBox = document.createElement('div');
+      errorBox.className = 'mb-4 rounded-2xl bg-danger/10 text-danger text-sm px-4 py-3';
+      errorBox.textContent = message;
+      form.parentElement?.insertBefore(errorBox, form);
+    }
+  });
+</script>
