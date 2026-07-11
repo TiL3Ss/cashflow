@@ -2,6 +2,7 @@
 // src/components/RecentExpenses.astro
 import { Icon } from 'astro-icon/components';
 import { fromCents } from '@/utils/currency';
+import { parseLocalDate } from '@/utils/dates';
 
 interface ExpenseItem {
   id: number;
@@ -44,7 +45,7 @@ const dateFormatter = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 
             </div>
             <div>
               <p class="text-sm font-medium">{exp.title}</p>
-              <p class="text-xs text-ink-soft">{dateFormatter.format(new Date(exp.expenseDate))}</p>
+              <p class="text-xs text-ink-soft">{dateFormatter.format(parseLocalDate(exp.expenseDate))}</p>
             </div>
           </div>
           <span class="money text-sm font-semibold text-danger">-{formatter.format(fromCents(exp.amount))}</span>

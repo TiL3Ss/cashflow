@@ -1,0 +1,94 @@
+---
+// src/components/PendingRecurringBanner.astro
+import { Icon } from 'astro-icon/components';
+
+---
+
+<div id="pending-banner" class="hidden card-float p-5 mb-5 border-l-4" style="border-left-color: var(--color-accent)" data-animate="rise">
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex items-start gap-3">
+      <div class="w-9 h-9 rounded-2xl bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+        <Icon name="lucide:clock-3" class="w-4 h-4 text-accent" />
+      </div>
+      <div>
+        <p class="text-sm font-semibold" id="pending-title">Tienes gastos programados pendientes</p>
+        <p class="text-xs text-ink-soft mt-0.5" id="pending-subtitle"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="pending-list" class="mt-4 space-y-2"></div>
+</div>
+
+<style>
+  [data-animate="rise"] { animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { [data-animate="rise"] { animation: none; } }
+</style>
+
+<script>
+  const formatter = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 });
+
+  function fromCents(cents: number) {
+    return cents / 100;
+  }
+
+  async function loadPending() {
+    const res = await fetch('/api/recurring-expenses?pending=true');
+    if (!res.ok) return;
+
+    const { data } = await res.json();
+    if (!data || data.length === 0) return;
+
+    const banner = document.getElementById('pending-banner')!;
+    const subtitle = document.getElementById('pending-subtitle')!;
+    const list = document.getElementById('pending-list')!;
+
+    subtitle.textContent = `Tienes ${data.length} gasto${data.length > 1 ? 's' : ''} pendiente${data.length > 1 ? 's' : ''} de confirmar`;
+
+    list.innerHTML = data
+      .map(
+        (item: any) => `
+      <div class="flex items-center justify-between bg-bg rounded-2xl px-4 py-3" data-item-id="${item.id}">
+        <div>
+          <p class="text-sm font-medium">${item.title}</p>
+          <p class="text-xs text-ink-soft">${formatter.format(fromCents(item.amount))}</p>
+        </div>
+        <div class="flex gap-2">
+          <button class="skip-btn text-xs font-semibold text-ink-soft px-3 py-2 rounded-full hover:bg-white transition" data-id="${item.id}">
+            Omitir
+          </button>
+          <button class="confirm-btn text-xs font-semibold text-white bg-primary px-3 py-2 rounded-full hover:opacity-90 transition" data-id="${item.id}">
+            Confirmar
+          </button>
+        </div>
+      </div>
+    `
+      )
+      .join('');
+
+    banner.classList.remove('hidden');
+
+    list.querySelectorAll('.confirm-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.id;
+        (btn as HTMLButtonElement).disabled = true;
+        btn.textContent = '...';
+        await fetch(`/api/recurring-expenses/${id}/confirm`, { method: 'POST' });
+        window.location.reload();
+      });
+    });
+
+    list.querySelectorAll('.skip-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.id;
+        (btn as HTMLButtonElement).disabled = true;
+        btn.textContent = '...';
+        await fetch(`/api/recurring-expenses/${id}/skip`, { method: 'POST' });
+        window.location.reload();
+      });
+    });
+  }
+
+  loadPending();
+</script>

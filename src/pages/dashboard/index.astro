@@ -3,21 +3,24 @@
 import Layout from '@/layouts/Layout.astro';
 import TopBar from '@/components/TopBar.astro';
 import BottomNav from '@/components/BottomNav.astro';
-import StatCard from '@/components/StatCard.astro';
+import BudgetOverview from '@/components/BudgetOverview.astro';
 import CategoryChart from '@/components/CategoryChart.astro';
 import RecentExpenses from '@/components/RecentExpenses.astro';
 import { ExpenseService } from '@/services/expense.service';
-import { getMonthRange, getPreviousMonthRange, formatMonthLabel } from '@/utils/dates';
+import { SettingsService } from '@/services/settings.service';
+import { SavingsService } from '@/services/savings.service';
+import PendingRecurringBanner from '@/components/PendingRecurringBanner.astro';
+import { getCycleRange, formatCycleLabel } from '@/utils/dates';
 
 const user = Astro.locals.user!;
 const userId = Number(user.id);
 
-const currentRange = getMonthRange();
-const previousRange = getPreviousMonthRange();
+const settings = await SettingsService.getOrDefault(userId);
+const currentRange = getCycleRange(settings.incomeDay);
 
-const [total, previousTotal, categoryTotals, recentExpenses] = await Promise.all([
+const [spent, savedNet, categoryTotals, recentExpenses] = await Promise.all([
   ExpenseService.getTotal(userId, currentRange),
-  ExpenseService.getTotal(userId, previousRange),
+  SavingsService.getNetMovementsInRange(userId, currentRange),
   ExpenseService.getTotalsByCategory(userId, currentRange),
   ExpenseService.list(userId, currentRange),
 ]);
@@ -28,8 +31,15 @@ const [total, previousTotal, categoryTotals, recentExpenses] = await Promise.all
 
   <main class="max-w-6xl mx-auto px-4 md:px-8 pb-28 md:pb-12">
     <div class="grid md:grid-cols-2 gap-5 mt-4 md:mt-2">
-      <StatCard totalCents={total} previousCents={previousTotal} monthLabel={formatMonthLabel()} />
+      <BudgetOverview
+        incomeCents={settings.monthlyIncome}
+        spentCents={spent}
+        savedCents={savedNet}
+        cycleLabel={formatCycleLabel(currentRange.from, currentRange.to)}
+        configured={'configured' in settings ? settings.configured : true}
+      />
       <CategoryChart data={categoryTotals} />
+      <PendingRecurringBanner />
     </div>
 
     <div class="mt-5">
@@ -39,16 +49,3 @@ const [total, previousTotal, categoryTotals, recentExpenses] = await Promise.all
 
   <BottomNav />
 </Layout>
-
-<style>
-  [data-animate="rise"] {
-    animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    [data-animate="rise"] { animation: none; }
-  }
-</style>

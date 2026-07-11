@@ -1,0 +1,118 @@
+---
+// src/pages/settings.astro
+import Layout from '@/layouts/Layout.astro';
+import TopBar from '@/components/TopBar.astro';
+import BottomNav from '@/components/BottomNav.astro';
+import { fromCents } from '@/utils/currency';
+import { Icon } from 'astro-icon/components';
+import { SettingsService } from '@/services/settings.service';
+
+const user = Astro.locals.user!;
+const settings = await SettingsService.getOrDefault(Number(user.id));
+const displayIncome = fromCents(settings.monthlyIncome);
+---
+
+<Layout title="Configuración">
+  <TopBar userName={user.name} />
+
+  <main class="max-w-lg mx-auto px-4 md:px-8 pb-28 md:pb-12">
+    <div class="flex items-center gap-3 mt-4 md:mt-2 mb-6">
+      <a href="/dashboard" class="inline-flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-ink-soft hover:text-ink hover:bg-bg transition">
+        <Icon name="lucide:arrow-left" class="w-5 h-5" />
+      </a>
+      <h1 class="text-xl font-bold">Configurar sueldo</h1>
+    </div>
+
+    <form id="settings-form" class="card-float p-6 md:p-8 space-y-5" data-animate="rise">
+      <div>
+        <label class="block text-sm font-medium mb-1.5" for="monthlyIncome">Sueldo mensual</label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-ink-soft">$</span>
+          <input
+            type="number" id="monthlyIncome" name="monthlyIncome" required min="0" step="1"
+            value={displayIncome > 0 ? displayIncome : ''}
+            placeholder="0"
+            class="money w-full rounded-2xl bg-bg pl-8 pr-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+          />
+        </div>
+        <p class="text-xs text-ink-soft mt-1.5">Este es el monto con el que contás cada ciclo.</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1.5" for="incomeDay">Día en que se acredita</label>
+        <input
+          type="number" id="incomeDay" name="incomeDay" required min="1" max="31"
+          value={settings.incomeDay}
+          class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+        />
+        <p class="text-xs text-ink-soft mt-1.5">
+          Tu "mes" en el dashboard se va a calcular desde este día hasta el día anterior del próximo ciclo.
+        </p>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-primary w-full py-3 text-sm font-semibold flex items-center justify-center gap-2">
+        <Icon name="lucide:check" id="submit-icon" class="w-4 h-4" />
+        <span id="submit-spinner" class="hidden w-4 h-4 rounded-full border-2 border-white/40 border-t-white spin"></span>
+        <span id="btn-text">Guardar</span>
+      </button>
+    </form>
+    <button id="logout-btn" class="w-full mt-4 py-3 text-sm font-semibold text-danger flex items-center justify-center gap-2">
+      <Icon name="lucide:log-out" class="w-4 h-4" /> Cerrar sesión
+    </button>
+  </main>
+
+  <BottomNav />
+</Layout>
+
+<style>
+  [data-animate="rise"] { animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 0.7s linear infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    [data-animate="rise"] { animation: none; }
+    .spin { animation: none; }
+  }
+</style>
+
+<script>
+  const form = document.getElementById('settings-form') as HTMLFormElement;
+  const btn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const btnText = document.getElementById('btn-text')!;
+  const submitIcon = document.getElementById('submit-icon')!;
+  const submitSpinner = document.getElementById('submit-spinner')!;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    btnText.textContent = 'Guardando...';
+    submitIcon.classList.add('hidden');
+    submitSpinner.classList.remove('hidden');
+
+    const formData = new FormData(form);
+    const payload = {
+      monthlyIncome: Number(formData.get('monthlyIncome')),
+      incomeDay: Number(formData.get('incomeDay')),
+    };
+
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      window.location.href = '/dashboard';
+    } else {
+      btn.disabled = false;
+      btnText.textContent = 'Guardar';
+      submitIcon.classList.remove('hidden');
+      submitSpinner.classList.add('hidden');
+      alert('Revisá los datos ingresados');
+    }
+  });
+  document.getElementById('logout-btn')?.addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
+  });
+</script>

@@ -8,6 +8,13 @@
       "when": 1783605614111,
       "tag": "0000_confused_iron_fist",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783726499513,
+      "tag": "0001_groovy_bloodstrike",
+      "breakpoints": true
     }
   ]
 }

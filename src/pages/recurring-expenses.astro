@@ -1,0 +1,272 @@
+---
+// src/pages/recurring-expenses.astro
+import Layout from '@/layouts/Layout.astro';
+import TopBar from '@/components/TopBar.astro';
+import BottomNav from '@/components/BottomNav.astro';
+import { Icon } from 'astro-icon/components';
+import { RecurringExpenseService } from '@/services/recurring-expense.service';
+import { CategoryService } from '@/services/category.service';
+import { fromCents } from '@/utils/currency';
+import { parseLocalDate } from '@/utils/dates';
+
+const user = Astro.locals.user!;
+const userId = Number(user.id);
+
+const [items, categories] = await Promise.all([
+  RecurringExpenseService.list(userId),
+  CategoryService.listForUser(userId),
+]);
+
+const formatter = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 });
+const dateFormatter = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+const today = new Date().toISOString().slice(0, 10);
+
+const frequencyLabels: Record<string, string> = {
+  weekly: 'Semanal',
+  monthly: 'Mensual',
+  yearly: 'Anual',
+};
+---
+
+<Layout title="Gastos programados">
+  <TopBar userName={user.name} />
+
+  <main class="max-w-lg mx-auto px-4 md:px-8 pb-28 md:pb-12">
+    <div class="flex items-center gap-3 mt-4 md:mt-2 mb-6">
+      <a href="/dashboard" class="inline-flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-ink-soft hover:text-ink hover:bg-bg transition">
+        <Icon name="lucide:arrow-left" class="w-5 h-5" />
+      </a>
+      <h1 class="text-xl font-bold flex-1">Gastos programados</h1>
+    </div>
+
+    <button id="new-btn" class="btn-primary w-full py-3 text-sm font-semibold flex items-center justify-center gap-2 mb-5">
+      <Icon name="lucide:plus" class="w-4 h-4" /> Nuevo gasto programado
+    </button>
+
+    {items.length === 0 ? (
+      <div class="card-float p-10 text-center" data-animate="rise">
+        <Icon name="lucide:repeat" class="w-8 h-8 text-ink-soft mx-auto mb-3" />
+        <p class="text-sm text-ink-soft">No Tienes gastos programados todavía</p>
+      </div>
+    ) : (
+      <div class="space-y-3">
+        {items.map((item) => (
+          <div class="card-float p-5 flex items-center justify-between" data-animate="rise">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={`background:${item.category?.color ?? '#6b7280'}22`}>
+                <Icon name={`lucide:${item.category?.icon ?? 'repeat'}`} class="w-4 h-4" style={`color:${item.category?.color ?? '#6b7280'}`} />
+              </div>
+              <div>
+                <p class="text-sm font-medium">{item.title}</p>
+                <p class="text-xs text-ink-soft">
+                  {frequencyLabels[item.frequency]} · Próximo: {dateFormatter.format(parseLocalDate(item.nextRunDate))}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="money text-sm font-semibold">{formatter.format(fromCents(item.amount))}</span>
+              <button class="delete-recurring-btn text-ink-soft hover:text-danger transition" data-id={item.id}>
+                <Icon name="lucide:trash-2" class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </main>
+
+ <div id="new-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+  <div id="modal-backdrop" class="absolute inset-0 bg-ink/40"></div>
+  <form id="recurring-form" class="card-float relative w-full max-w-sm p-6 space-y-4" data-animate="rise">
+    <div class="flex items-center justify-between">
+      <p class="text-base font-bold">Nuevo gasto programado</p>
+      <button type="button" id="modal-close-x" class="w-8 h-8 rounded-full flex items-center justify-center text-ink-soft hover:bg-bg hover:text-ink transition">
+        <Icon name="lucide:x" class="w-4 h-4" />
+      </button>
+    </div>
+
+    <input type="text" name="title" required maxlength="200" placeholder="Ej: Netflix"
+      class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition" />
+
+    <div class="relative">
+      <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-ink-soft">$</span>
+      <input type="number" name="amount" required min="1" step="1" placeholder="0"
+        class="money w-full rounded-2xl bg-bg pl-8 pr-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition" />
+    </div>
+
+    <select name="frequency" class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition">
+      <option value="monthly">Mensual</option>
+      <option value="weekly">Semanal</option>
+      <option value="yearly">Anual</option>
+    </select>
+
+    <div>
+      <label class="block text-xs text-ink-soft mb-1.5">Próxima fecha</label>
+      <input type="date" name="nextRunDate" required value={today}
+        class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition" />
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      {categories.map((cat) => (
+        <label class="category-radio">
+          <input type="radio" name="categoryId" value={cat.id} class="sr-only peer" />
+          <span class="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium cursor-pointer transition" style={`--cat-color:${cat.color}`}>
+            <Icon name={`lucide:${cat.icon}`} class="w-3.5 h-3.5" />
+            {cat.name}
+          </span>
+        </label>
+      ))}
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button type="button" id="modal-cancel" class="flex-1 py-2.5 rounded-full text-sm font-semibold bg-bg hover:bg-bg/70 transition">
+        Cancelar
+      </button>
+      <button type="submit" id="form-submit-btn" class="flex-1 py-2.5 rounded-full text-sm font-semibold bg-primary text-white hover:opacity-90 transition flex items-center justify-center gap-2">
+        <span id="form-spinner" class="hidden w-4 h-4 rounded-full border-2 border-white/40 border-t-white spin"></span>
+        <span id="form-btn-text">Crear</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+  <div id="delete-modal-backdrop" class="absolute inset-0 bg-ink/40"></div>
+  <div class="card-float relative w-full max-w-xs p-6 text-center" data-animate="rise">
+    <div class="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4">
+      <Icon name="lucide:trash-2" class="w-5 h-5 text-danger" />
+    </div>
+    <h2 class="text-base font-bold mb-1">¿Eliminar este gasto programado?</h2>
+    <p class="text-sm text-ink-soft mb-6">No se va a volver a generar automáticamente.</p>
+    <div class="flex gap-3">
+      <button id="delete-modal-cancel" class="flex-1 py-2.5 rounded-full text-sm font-semibold bg-bg hover:bg-bg/70 transition">
+        Cancelar
+      </button>
+      <button id="delete-modal-confirm" class="flex-1 py-2.5 rounded-full text-sm font-semibold bg-danger text-white hover:opacity-90 transition flex items-center justify-center gap-2">
+        <span id="delete-modal-spinner" class="hidden w-4 h-4 rounded-full border-2 border-white/40 border-t-white spin"></span>
+        <span id="delete-modal-text">Eliminar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+  <BottomNav />
+</Layout>
+
+<style>
+  .category-radio span {
+    background: color-mix(in srgb, var(--cat-color) 12%, white);
+    color: var(--cat-color);
+  }
+  .category-radio input:checked + span {
+    background: var(--cat-color);
+    color: #fff;
+  }
+  [data-animate="rise"] { animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 0.7s linear infinite; }
+  #new-modal.flex { display: flex; }
+  @media (prefers-reduced-motion: reduce) {
+    [data-animate="rise"] { animation: none; }
+    .spin { animation: none; }
+  }
+</style>
+
+<script>
+  const newBtn = document.getElementById('new-btn')!;
+  const modal = document.getElementById('new-modal')!;
+  const modalBackdrop = document.getElementById('modal-backdrop')!;
+  const modalCancel = document.getElementById('modal-cancel')!;
+  const modalCloseX = document.getElementById('modal-close-x')!;
+  const form = document.getElementById('recurring-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('form-submit-btn') as HTMLButtonElement;
+  const btnText = document.getElementById('form-btn-text')!;
+  const spinner = document.getElementById('form-spinner')!;
+
+  function openModal() {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  newBtn.addEventListener('click', openModal);
+  modalCancel.addEventListener('click', closeModal);
+  modalCloseX.addEventListener('click', closeModal);
+  modalBackdrop.addEventListener('click', closeModal);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    btnText.textContent = 'Creando...';
+    spinner.classList.remove('hidden');
+
+    const formData = new FormData(form);
+    const payload = {
+      title: formData.get('title'),
+      amount: Number(formData.get('amount')),
+      frequency: formData.get('frequency'),
+      nextRunDate: formData.get('nextRunDate'),
+      categoryId: formData.get('categoryId') ? Number(formData.get('categoryId')) : null,
+    };
+
+    const res = await fetch('/api/recurring-expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      submitBtn.disabled = false;
+      btnText.textContent = 'Crear';
+      spinner.classList.add('hidden');
+      alert('Revisá los datos ingresados');
+    }
+  });
+
+  // --- Modal de confirmación de borrado (reemplaza al confirm() nativo) ---
+  const deleteModal = document.getElementById('delete-modal')!;
+  const deleteModalBackdrop = document.getElementById('delete-modal-backdrop')!;
+  const deleteModalCancel = document.getElementById('delete-modal-cancel')!;
+  const deleteModalConfirm = document.getElementById('delete-modal-confirm') as HTMLButtonElement;
+  const deleteModalText = document.getElementById('delete-modal-text')!;
+  const deleteModalSpinner = document.getElementById('delete-modal-spinner')!;
+
+  let pendingDeleteId: string | null = null;
+
+  function openDeleteModal(id: string) {
+    pendingDeleteId = id;
+    deleteModal.classList.remove('hidden');
+    deleteModal.classList.add('flex');
+  }
+  function closeDeleteModal() {
+    pendingDeleteId = null;
+    deleteModal.classList.add('hidden');
+    deleteModal.classList.remove('flex');
+  }
+
+  document.querySelectorAll('.delete-recurring-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = (btn as HTMLElement).dataset.id!;
+      openDeleteModal(id);
+    });
+  });
+
+  deleteModalCancel.addEventListener('click', closeDeleteModal);
+  deleteModalBackdrop.addEventListener('click', closeDeleteModal);
+
+  deleteModalConfirm.addEventListener('click', async () => {
+    if (!pendingDeleteId) return;
+    deleteModalConfirm.disabled = true;
+    deleteModalText.textContent = 'Eliminando...';
+    deleteModalSpinner.classList.remove('hidden');
+
+    await fetch(`/api/recurring-expenses/${pendingDeleteId}`, { method: 'DELETE' });
+    window.location.reload();
+  });
+</script>

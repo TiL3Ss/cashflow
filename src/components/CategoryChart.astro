@@ -14,22 +14,28 @@ interface Props {
 }
 const { data } = Astro.props;
 
-const filtered = data.filter((d) => d.total > 0).sort((a, b) => b.total - a.total);
+const filtered = data
+  .filter((d) => Number(d.total) > 0)
+  .map((d) => ({ ...d, total: Number(d.total) }))
+  .sort((a, b) => b.total - a.total);
+
 const grandTotal = filtered.reduce((sum, d) => sum + d.total, 0);
 
 const RADIUS = 70;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const GAP = filtered.length > 1 ? 4 : 0; // px de separación visual entre segmentos
 
 let offset = 0;
 const segments = filtered.map((d) => {
   const fraction = grandTotal > 0 ? d.total / grandTotal : 0;
-  const length = fraction * CIRCUMFERENCE;
+  const rawLength = fraction * CIRCUMFERENCE;
+  const length = Math.max(rawLength - GAP, 0); // resta el gap sin dejarlo negativo
   const segment = {
     ...d,
-    dashArray: `${length} ${CIRCUMFERENCE - length}`,
+    dashArray: `${length} ${CIRCUMFERENCE}`,
     dashOffset: -offset,
   };
-  offset += length;
+  offset += rawLength; // el offset avanza con el largo REAL (sin descontar), así el gap queda entre segmentos
   return segment;
 });
 ---
@@ -43,17 +49,17 @@ const segments = filtered.map((d) => {
     </div>
   ) : (
     <div class="flex flex-col items-center">
-      <svg viewBox="0 0 180 180" class="w-44 h-44 -rotate-90" id="donut-chart">
+      <svg viewBox="0 0 180 180" class="w-44 h-44 -rotate-90">
         <circle cx="90" cy="90" r={RADIUS} fill="none" stroke="var(--color-bg)" stroke-width="20" />
+
         {segments.map((s) => (
           <circle
             cx="90" cy="90" r={RADIUS} fill="none"
             stroke={s.categoryColor ?? '#6b7280'}
             stroke-width="20"
+            stroke-linecap="round"
             stroke-dasharray={s.dashArray}
             stroke-dashoffset={s.dashOffset}
-            stroke-linecap="round"
-            class="chart-segment"
           />
         ))}
       </svg>
@@ -74,20 +80,3 @@ const segments = filtered.map((d) => {
     </div>
   )}
 </div>
-
-<style>
-  .chart-segment {
-    stroke-dashoffset: 0 !important;
-    animation: draw-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
-    transform-origin: center;
-  }
-
-  @keyframes draw-in {
-    from { opacity: 0; transform: scale(0.85); }
-    to { opacity: 1; transform: scale(1); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chart-segment { animation: none; }
-  }
-</style>

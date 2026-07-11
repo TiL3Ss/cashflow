@@ -1,24 +1,71 @@
 ---
 // src/components/BottomNav.astro
 import { Icon } from 'astro-icon/components';
+
+const pathname = Astro.url.pathname;
+
+function isActive(href: string): boolean {
+  if (href === '/dashboard') return pathname === '/dashboard';
+  if (href === '/expenses/new') return pathname === '/expenses/new';
+  // '/expenses' debe marcar activo también en '/expenses/123' (detalle/edición),
+  // pero NO en '/expenses/new' (que tiene su propio ícono destacado)
+  if (href === '/expenses') return pathname.startsWith('/expenses') && pathname !== '/expenses/new';
+  return pathname.startsWith(href);
+}
 ---
 
 <nav class="md:hidden fixed bottom-4 left-4 right-4 z-50">
-  <div class="card-float flex items-center justify-around px-2 py-2">
-    <a href="/dashboard" class="flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-ink-soft hover:text-primary transition">
+  <div class="card-float flex items-center justify-around px-1 py-2">
+    <a href="/dashboard" class={`nav-item ${isActive('/dashboard') ? 'active' : ''}`} aria-label="Inicio">
       <Icon name="lucide:layout-grid" class="w-5 h-5" />
-      <span class="text-[10px] font-medium">Inicio</span>
     </a>
-    <a href="/expenses/new" class="btn-primary w-12 h-12 rounded-full flex items-center justify-center -translate-y-3">
-      <Icon name="lucide:plus" class="w-6 h-6" />
-    </a>
-    <a href="/expenses" class="flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-ink-soft hover:text-primary transition">
+    <a href="/expenses" class={`nav-item ${isActive('/expenses') ? 'active' : ''}`} aria-label="Gastos">
       <Icon name="lucide:receipt" class="w-5 h-5" />
-      <span class="text-[10px] font-medium">Gastos</span>
     </a>
-    <button id="logout-btn-mobile" class="flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl text-ink-soft hover:text-danger transition">
-      <Icon name="lucide:log-out" class="w-5 h-5" />
-      <span class="text-[10px] font-medium">Salir</span>
-    </button>
+    <a href="/expenses/new" class={`nav-item nav-item-highlight ${isActive('/expenses/new') ? 'active' : ''}`} aria-label="Nuevo gasto">
+      <Icon name="lucide:plus-circle" class="w-5 h-5" />
+    </a>
+    <a href="/savings" class={`nav-item ${isActive('/savings') ? 'active' : ''}`} aria-label="Ahorro">
+      <Icon name="lucide:piggy-bank" class="w-5 h-5" />
+    </a>
+    <a href="/recurring-expenses" class={`nav-item ${isActive('/recurring-expenses') ? 'active' : ''}`} aria-label="Gastos programados">
+      <Icon name="lucide:repeat" class="w-5 h-5" />
+    </a>
+    <a href="/settings" class={`nav-item ${isActive('/settings') ? 'active' : ''}`} aria-label="Ajustes">
+      <Icon name="lucide:settings" class="w-5 h-5" />
+    </a>
   </div>
 </nav>
+
+<style>
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    color: var(--color-ink-soft);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .nav-item:hover,
+  .nav-item:active {
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+  .nav-item.active {
+    background: var(--color-primary);
+    color: white;
+  }
+  .nav-item-highlight {
+    color: var(--color-primary);
+  }
+  .nav-item-highlight:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+  }
+  .nav-item-highlight.active {
+    background: var(--color-primary);
+    color: white;
+  }
+</style>

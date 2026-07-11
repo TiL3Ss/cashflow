@@ -9,12 +9,17 @@ const { userName } = Astro.props;
 ---
 
 <header class="hidden md:flex items-center justify-between px-8 py-5 max-w-6xl mx-auto">
-  <a href="/dashboard" class="flex items-center gap-2">
-    <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
-      <Icon name="lucide:wallet" class="w-5 h-5 text-white" />
-    </div>
-    <span class="font-extrabold text-lg tracking-tight">CashFlow</span>
-  </a>
+    <a href="/dashboard" class="flex items-center gap-2">
+      <img src="/IMG/icon.png" alt="CashFlow" class="w-9 h-9 rounded-2xl object-cover" />
+      <span class="font-extrabold text-lg tracking-tight">
+        <span class="bg-gradient-to-r from-[#5ba57d] to-[#468966] bg-clip-text text-transparent">
+          Cash
+        </span>
+        <span class="bg-gradient-to-r from-[#FFB03B] to-[#E9724C] bg-clip-text text-transparent">
+          Flow
+        </span>
+      </span>
+    </a>
 
   <nav class="flex items-center gap-1 card-float px-2 py-2">
     <a href="/dashboard" class="px-4 py-2 rounded-full text-sm font-medium hover:bg-bg transition flex items-center gap-2">
@@ -23,11 +28,20 @@ const { userName } = Astro.props;
     <a href="/expenses" class="px-4 py-2 rounded-full text-sm font-medium hover:bg-bg transition flex items-center gap-2">
       <Icon name="lucide:receipt" class="w-4 h-4" /> Gastos
     </a>
+    <a href="/savings" class="px-4 py-2 rounded-full text-sm font-medium hover:bg-bg transition flex items-center gap-2">
+      <Icon name="lucide:piggy-bank" class="w-4 h-4" /> Ahorro
+    </a>
+    <a href="/recurring-expenses" class="px-4 py-2 rounded-full text-sm font-medium hover:bg-bg transition flex items-center gap-2">
+      <Icon name="lucide:repeat" class="w-4 h-4" /> Programados
+    </a>
   </nav>
 
   <div class="flex items-center gap-3">
     <a href="/expenses/new" class="btn-primary px-4 py-2.5 text-sm font-semibold flex items-center gap-2">
       <Icon name="lucide:plus" class="w-4 h-4" /> Nuevo gasto
+    </a>
+    <a href="/settings" class="w-10 h-10 rounded-full card-float flex items-center justify-center text-ink-soft hover:text-primary transition" title="Configuración">
+      <Icon name="lucide:settings" class="w-4 h-4" />
     </a>
     <button id="logout-btn-desktop" class="w-10 h-10 rounded-full card-float flex items-center justify-center text-ink-soft hover:text-danger transition" title={`Cerrar sesión (${userName})`}>
       <Icon name="lucide:log-out" class="w-4 h-4" />

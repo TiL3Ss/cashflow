@@ -6,6 +6,7 @@ import BottomNav from '@/components/BottomNav.astro';
 import { Icon } from 'astro-icon/components';
 import { ExpenseService } from '@/services/expense.service';
 import { fromCents } from '@/utils/currency';
+import { parseLocalDate } from '@/utils/dates';
 
 const user = Astro.locals.user!;
 const allExpenses = await ExpenseService.list(Number(user.id));
@@ -50,7 +51,7 @@ const monthFormatter = new Intl.DateTimeFormat('es-CL', { month: 'long', year: '
           <div class="mb-6">
             <div class="flex items-center justify-between px-2 mb-3">
               <p class="text-sm font-semibold capitalize text-ink-soft">
-                {monthFormatter.format(new Date(monthKey + '-02'))}
+                {dateFormatter.format(parseLocalDate(monthKey + '-02'))}
               </p>
               <p class="money text-sm font-semibold text-ink-soft">{formatter.format(fromCents(monthTotal))}</p>
             </div>
@@ -67,7 +68,7 @@ const monthFormatter = new Intl.DateTimeFormat('es-CL', { month: 'long', year: '
                     </div>
                     <div>
                       <p class="text-sm font-medium">{exp.title}</p>
-                      <p class="text-xs text-ink-soft">{dateFormatter.format(new Date(exp.expenseDate))}</p>
+                      <p class="text-xs text-ink-soft">{dateFormatter.format(parseLocalDate(exp.expenseDate))}</p>
                     </div>
                   </div>
                   <span class="money text-sm font-semibold text-danger">-{formatter.format(fromCents(exp.amount))}</span>

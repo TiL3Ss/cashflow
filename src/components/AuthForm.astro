@@ -16,15 +16,20 @@ const isRegister = mode === 'register';
     class="card-float w-full max-w-sm p-8 md:p-10"
     data-animate="rise"
   >
-    <div class="flex items-center gap-2 mb-8 justify-center">
-      <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
-        <Icon name="lucide:wallet" class="w-5 h-5 text-white" />
-      </div>
-      <span class="font-extrabold text-lg tracking-tight">CashFlow</span>
+      <div class="flex items-center gap-2 mb-8 justify-center">
+      <img src="/IMG/icon.png" alt="CashFlow" class="w-10 h-10 rounded-2xl object-cover" />
+      <span class="font-extrabold text-lg tracking-tight">
+        <span class="bg-gradient-to-r from-[#5ba57d] to-[#468966] bg-clip-text text-transparent">
+          Cash
+        </span>
+        <span class="bg-gradient-to-r from-[#FFC857] to-[#E9724C] bg-clip-text text-transparent">
+          Flow
+        </span>
+      </span>
     </div>
 
     <h1 class="text-2xl font-extrabold text-center mb-1 tracking-tight">
-      {isRegister ? 'Crear cuenta' : 'Bienvenido de nuevo'}
+      {isRegister ? 'Crear cuenta' : 'Bienvenido'}
     </h1>
     <p class="text-sm text-ink-soft text-center mb-7">
       {isRegister ? 'Empezá a organizar tus gastos' : 'Iniciá sesión para continuar'}
@@ -125,7 +130,7 @@ const isRegister = mode === 'register';
       const message = typeof data.error === 'string' ? data.error : 'Revisá los datos ingresados';
       btn.disabled = false;
       btnText.textContent = isRegister ? 'Registrarme' : 'Entrar';
-      // Reemplazamos el alert por un mensaje inline recargando con query param simple por ahora
+      
       const errorBox = document.createElement('div');
       errorBox.className = 'mb-4 rounded-2xl bg-danger/10 text-danger text-sm px-4 py-3';
       errorBox.textContent = message;

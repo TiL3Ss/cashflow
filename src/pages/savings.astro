@@ -1,0 +1,191 @@
+---
+// src/pages/savings.astro
+import Layout from '@/layouts/Layout.astro';
+import TopBar from '@/components/TopBar.astro';
+import BottomNav from '@/components/BottomNav.astro';
+import { parseLocalDate } from '@/utils/dates';
+import { Icon } from 'astro-icon/components';
+import { SavingsService } from '@/services/savings.service';
+import { fromCents } from '@/utils/currency';
+
+const user = Astro.locals.user!;
+const userId = Number(user.id);
+
+const [balance, movements] = await Promise.all([
+  SavingsService.getBalance(userId),
+  SavingsService.list(userId),
+]);
+
+const formatter = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 });
+const dateFormatter = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+const today = new Date().toISOString().slice(0, 10);
+---
+
+<Layout title="Ahorro">
+  <TopBar userName={user.name} />
+
+  <main class="max-w-lg mx-auto px-4 md:px-8 pb-28 md:pb-12">
+    <div class="flex items-center gap-3 mt-4 md:mt-2 mb-6">
+      <a href="/dashboard" class="inline-flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-ink-soft hover:text-ink hover:bg-bg transition">
+        <Icon name="lucide:arrow-left" class="w-5 h-5" />
+      </a>
+      <h1 class="text-xl font-bold">Ahorro</h1>
+    </div>
+
+    <div class="card-float p-8 mb-5" data-animate="rise">
+      <p class="text-xs text-ink-soft mb-1">Saldo total ahorrado</p>
+      <p class={`money text-4xl font-extrabold tracking-tight ${balance < 0 ? 'text-danger' : 'text-primary'}`}>
+        {formatter.format(fromCents(balance))}
+      </p>
+    </div>
+
+    <form id="movement-form" class="card-float p-6 mb-5 space-y-4" data-animate="rise" style="animation-delay:0.1s">
+      <p class="text-sm font-semibold">Nuevo movimiento</p>
+
+      <div class="flex gap-2">
+        <button type="button" id="type-deposit" class="movement-type-btn flex-1 py-2.5 rounded-2xl text-sm font-semibold transition" data-type="deposit">
+          <Icon name="lucide:arrow-down-circle" class="w-4 h-4 inline mr-1" /> Depósito
+        </button>
+        <button type="button" id="type-withdraw" class="movement-type-btn flex-1 py-2.5 rounded-2xl text-sm font-semibold transition" data-type="withdraw">
+          <Icon name="lucide:arrow-up-circle" class="w-4 h-4 inline mr-1" /> Retiro
+        </button>
+      </div>
+
+      <div class="relative">
+        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-ink-soft">$</span>
+        <input
+          type="number" id="amount" name="amount" required min="1" step="1"
+          placeholder="0"
+          class="money w-full rounded-2xl bg-bg pl-8 pr-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+        />
+      </div>
+
+      <input
+        type="date" id="movementDate" name="movementDate" required value={today}
+        class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+      />
+
+      <input
+        type="text" id="notes" name="notes" maxlength="500"
+        placeholder="Notas (opcional)"
+        class="w-full rounded-2xl bg-bg px-4 py-3 text-sm outline-none ring-1 ring-transparent focus:ring-2 focus:ring-primary transition"
+      />
+
+      <button type="submit" id="submit-btn" class="btn-primary w-full py-3 text-sm font-semibold flex items-center justify-center gap-2">
+        <Icon name="lucide:check" id="submit-icon" class="w-4 h-4" />
+        <span id="submit-spinner" class="hidden w-4 h-4 rounded-full border-2 border-white/40 border-t-white spin"></span>
+        <span id="btn-text">Registrar movimiento</span>
+      </button>
+    </form>
+
+    <div class="card-float p-6" data-animate="rise" style="animation-delay:0.2s">
+      <p class="text-sm font-semibold mb-4">Historial</p>
+      {movements.length === 0 ? (
+        <p class="text-sm text-ink-soft text-center py-6">Todavía no hay movimientos</p>
+      ) : (
+        <div class="space-y-1">
+          {movements.map((m) => (
+            <div class="flex items-center justify-between px-2 py-3">
+              <div class="flex items-center gap-3">
+                <div class={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 ${m.amount >= 0 ? 'bg-primary/10' : 'bg-danger/10'}`}>
+                  <Icon name={m.amount >= 0 ? 'lucide:arrow-down-circle' : 'lucide:arrow-up-circle'} class={`w-4 h-4 ${m.amount >= 0 ? 'text-primary' : 'text-danger'}`} />
+                </div>
+                <div>
+                  <p class="text-sm font-medium">{m.notes || (m.amount >= 0 ? 'Depósito' : 'Retiro')}</p>
+                  <p class="text-xs text-ink-soft">{dateFormatter.format(parseLocalDate(m.movementDate))}</p>
+                </div>
+              </div>
+              <span class={`money text-sm font-semibold ${m.amount >= 0 ? 'text-primary' : 'text-danger'}`}>
+                {m.amount >= 0 ? '+' : ''}{formatter.format(fromCents(m.amount))}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </main>
+
+  <BottomNav />
+</Layout>
+
+<style>
+  [data-animate="rise"] { animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 0.7s linear infinite; }
+
+  .movement-type-btn {
+    background: var(--color-bg);
+    color: var(--color-ink-soft);
+  }
+  .movement-type-btn.active[data-type="deposit"] {
+    background: var(--color-primary);
+    color: white;
+  }
+  .movement-type-btn.active[data-type="withdraw"] {
+    background: var(--color-danger);
+    color: white;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-animate="rise"] { animation: none; }
+    .spin { animation: none; }
+  }
+</style>
+
+<script>
+  const depositBtn = document.getElementById('type-deposit')!;
+  const withdrawBtn = document.getElementById('type-withdraw')!;
+  let movementType: 'deposit' | 'withdraw' = 'deposit';
+
+  function setType(type: 'deposit' | 'withdraw') {
+    movementType = type;
+    depositBtn.classList.toggle('active', type === 'deposit');
+    withdrawBtn.classList.toggle('active', type === 'withdraw');
+  }
+  setType('deposit');
+
+  depositBtn.addEventListener('click', () => setType('deposit'));
+  withdrawBtn.addEventListener('click', () => setType('withdraw'));
+
+  const form = document.getElementById('movement-form') as HTMLFormElement;
+  const btn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const btnText = document.getElementById('btn-text')!;
+  const submitIcon = document.getElementById('submit-icon')!;
+  const submitSpinner = document.getElementById('submit-spinner')!;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    btnText.textContent = 'Guardando...';
+    submitIcon.classList.add('hidden');
+    submitSpinner.classList.remove('hidden');
+
+    const formData = new FormData(form);
+    const rawAmount = Number(formData.get('amount'));
+    const amount = movementType === 'withdraw' ? -Math.abs(rawAmount) : Math.abs(rawAmount);
+
+    const payload = {
+      amount,
+      movementDate: formData.get('movementDate'),
+      notes: formData.get('notes') || null,
+    };
+
+    const res = await fetch('/api/savings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      window.location.href = '/savings';
+    } else {
+      const data = await res.json();
+      btn.disabled = false;
+      btnText.textContent = 'Registrar movimiento';
+      submitIcon.classList.remove('hidden');
+      submitSpinner.classList.add('hidden');
+      alert(typeof data.error === 'string' ? data.error : 'Revisá los datos ingresados');
+    }
+  });
+</script>

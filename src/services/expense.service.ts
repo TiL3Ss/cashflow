@@ -108,7 +108,7 @@ export class ExpenseService {
       .from(expenses)
       .where(and(...conditions));
 
-    return result?.total ?? 0;
+    return Number(result?.total ?? 0);
   }
 
   /** Totales agrupados por categoría (para gráficos del dashboard) */
@@ -117,16 +117,18 @@ export class ExpenseService {
     if (options?.from) conditions.push(gte(expenses.expenseDate, options.from));
     if (options?.to) conditions.push(lte(expenses.expenseDate, options.to));
 
-    return db
-      .select({
-        categoryId: categories.id,
-        categoryName: categories.name,
-        categoryColor: categories.color,
-        total: sql<number>`COALESCE(SUM(${expenses.amount}), 0)`,
-      })
-      .from(expenses)
-      .leftJoin(categories, eq(expenses.categoryId, categories.id))
-      .where(and(...conditions))
-      .groupBy(categories.id);
+    const rows = await db
+    .select({
+      categoryId: categories.id,
+      categoryName: categories.name,
+      categoryColor: categories.color,
+      total: sql<number>`COALESCE(SUM(${expenses.amount}), 0)`,
+    })
+    .from(expenses)
+    .leftJoin(categories, eq(expenses.categoryId, categories.id))
+    .where(and(...conditions))
+    .groupBy(categories.id);
+
+  return rows.map((r) => ({ ...r, total: Number(r.total) }));   
   }
 }

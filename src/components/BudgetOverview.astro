@@ -1,0 +1,87 @@
+---
+// src/components/BudgetOverview.astro
+import { Icon } from 'astro-icon/components';
+import { fromCents } from '@/utils/currency';
+
+interface Props {
+  incomeCents: number;
+  spentCents: number;
+  savedCents: number; // ← NUEVO: neto de movimientos de ahorro en el ciclo
+  cycleLabel: string;
+  configured: boolean;
+}
+const { incomeCents, spentCents, savedCents, cycleLabel, configured } = Astro.props;
+
+const remainingCents = incomeCents - spentCents - savedCents;
+const percentUsed = incomeCents > 0 ? Math.min(((spentCents + savedCents) / incomeCents) * 100, 100) : 0;
+const isOverBudget = remainingCents < 0;
+---
+
+<div class="card-float p-8" data-animate="rise">
+  {!configured && (
+    <a href="/settings" class="flex items-center gap-2 mb-5 text-xs font-semibold text-accent bg-accent/10 px-3 py-2 rounded-2xl">
+      <Icon name="lucide:info" class="w-3.5 h-3.5 shrink-0" />
+      Configurá tu sueldo para ver cuánto te queda disponible
+    </a>
+  )}
+
+  <p class="text-sm text-ink-soft font-medium mb-1">{cycleLabel}</p>
+  <p class="text-xs text-ink-soft mb-4">Disponible este ciclo</p>
+
+  <p class={`money text-5xl md:text-6xl font-extrabold tracking-tight ${isOverBudget ? 'text-danger' : 'text-ink'}`} id="remaining-amount" data-target={fromCents(remainingCents)}>
+    $0
+  </p>
+
+  {configured && (
+    <>
+      <div class="w-full h-2 bg-bg rounded-full mt-5 overflow-hidden">
+        <div
+          class={`h-full rounded-full transition-all duration-700 ${isOverBudget ? 'bg-danger' : 'bg-primary'}`}
+          style={`width:${percentUsed}%`}
+        ></div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 mt-4 text-xs text-ink-soft">
+        <div>
+          <p>Sueldo</p>
+          <p class="money font-semibold text-ink">{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(fromCents(incomeCents))}</p>
+        </div>
+        <div>
+          <p>Gastado</p>
+          <p class="money font-semibold text-danger">{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(fromCents(spentCents))}</p>
+        </div>
+        <div>
+          <p>Ahorrado</p>
+          <p class="money font-semibold text-primary">{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(fromCents(savedCents))}</p>
+        </div>
+      </div>
+    </>
+  )}
+</div>
+
+<script>
+  function animateCount(el: HTMLElement) {
+    const target = parseFloat(el.dataset.target || '0');
+    const duration = 900;
+    const start = performance.now();
+    const formatter = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 });
+
+    function tick(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const value = target * eased;
+      el.textContent = formatter.format(value);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  const el = document.getElementById('remaining-amount');
+  if (el) animateCount(el);
+</script>
+
+<style>
+  [data-animate="rise"] { animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { [data-animate="rise"] { animation: none; } }
+</style>
